@@ -85,11 +85,16 @@ keys = [
     Key([mod], "d", lazy.spawn("dolphin")),
     Key([mod], "z", lazy.spawn("zeditor")),
     Key([mod], "e", lazy.spawn("rofi -show drun")),
+    Key([mod, "shift"], "x", lazy.spawn("betterlockscreen -l")),
 
     # Volume control using pamixer
     Key([], "XF86AudioRaiseVolume", lazy.spawn("pamixer -i 5")),
     Key([], "XF86AudioLowerVolume", lazy.spawn("pamixer -d 5")),
     Key([], "XF86AudioMute", lazy.spawn("pamixer -t")),
+
+    # Screen brightness control
+    Key([], "XF86MonBrightnessDown", lazy.spawn("brightnessctl set 10%-")),
+    Key([], "XF86MonBrightnessUp", lazy.spawn("brightnessctl set 10%+")),
 ]
 
 # Add key bindings to switch VTs in Wayland.
@@ -172,7 +177,12 @@ screens = [
                 # NB Systray is incompatible with Wayland, consider using StatusNotifier instead
                 # widget.StatusNotifier(),
                 widget.Systray(),
-                widget.PulseVolume(fmt="Vol: {}%", update_interval=0.5,),
+                widget.Backlight(
+                    backlight_name='amdgpu_bl2',
+                    step=10,
+                    format='🌞 {percent:2.0%}',
+                ),
+                widget.PulseVolume(fmt="🔊 {}%", update_interval=0.5,),
                 widget.Battery(
                     format='{char} {percent:2.0%}',
                     charge_char='↑',
@@ -256,10 +266,11 @@ def start_battery_monitor():
         global battery_warned
         battery = psutil.sensors_battery()
         if battery:
-            percent = battery.percent
+            percent = round(battery.percent)
             plugged = battery.power_plugged
             if percent <= 15 and not plugged:
                 if not battery_warned:
+
                     subprocess.run([
                         'notify-send',
                         'Battery Low',
