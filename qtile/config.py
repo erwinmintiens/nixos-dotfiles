@@ -28,6 +28,9 @@ from libqtile import bar, layout, qtile, widget
 from libqtile.config import Click, Drag, Group, Key, Match, Screen
 from libqtile.lazy import lazy
 from libqtile.utils import guess_terminal
+import subprocess
+import psutil
+from libqtile import hook
 
 mod = "mod4"
 terminal = guess_terminal()
@@ -67,7 +70,7 @@ keys = [
     Key([mod], "Return", lazy.spawn(terminal), desc="Launch terminal"),
     # Toggle between different layouts as defined below
     Key([mod], "Tab", lazy.next_layout(), desc="Toggle between layouts"),
-    Key([mod], "w", lazy.window.kill(), desc="Kill focused window"),
+    Key([mod], "q", lazy.window.kill(), desc="Kill focused window"),
     Key(
         [mod],
         "f",
@@ -81,6 +84,12 @@ keys = [
     Key([mod], "b", lazy.spawn("librewolf")),
     Key([mod], "d", lazy.spawn("dolphin")),
     Key([mod], "z", lazy.spawn("zeditor")),
+    Key([mod], "e", lazy.spawn("rofi -show drun")),
+
+    # Volume control using pamixer
+    Key([], "XF86AudioRaiseVolume", lazy.spawn("pamixer -i 5")),
+    Key([], "XF86AudioLowerVolume", lazy.spawn("pamixer -d 5")),
+    Key([], "XF86AudioMute", lazy.spawn("pamixer -t")),
 ]
 
 # Add key bindings to switch VTs in Wayland.
@@ -163,7 +172,17 @@ screens = [
                 # NB Systray is incompatible with Wayland, consider using StatusNotifier instead
                 # widget.StatusNotifier(),
                 widget.Systray(),
-                widget.Clock(format="%Y-%m-%d %a %I:%M %p"),
+                widget.PulseVolume(fmt="Vol: {}%", update_interval=0.5,),
+                widget.Battery(
+                    format='{char} {percent:2.0%}',
+                    charge_char='↑',
+                    discharge_char='↓',
+                    empty_char='×',
+                    full_char='=',
+                    show_short_text=False,
+                    update_interval=30,
+                ),
+                widget.Clock(format="%Y-%m-%d %a %H:%M:%S"),
                 widget.QuickExit(),
             ],
             24,
@@ -226,3 +245,30 @@ wl_xcursor_size = 24
 # We choose LG3D to maximize irony: it is a 3D non-reparenting WM written in
 # java that happens to be on java's whitelist.
 wmname = "LG3D"
+
+battery_warned = False
+
+@hook.subscribe.startup_once
+def start_battery_monitor():
+    from threading import Timer
+
+    def check_battery():
+        global battery_warned
+        battery = psutil.sensors_battery()
+        if battery:
+            percent = battery.percent
+            plugged = battery.power_plugged
+            if percent <= 15 and not plugged:
+                if not battery_warned:
+                    subprocess.run([
+                        'notify-send',
+                        'Battery Low',
+                        f'{percent}% remaining. Please plug in!'
+                    ])
+                    battery_warned = True
+            elif percent > 20:
+                battery_warned = False  # Reset flag
+
+        Timer(60, check_battery).start()
+
+    check_battery()
