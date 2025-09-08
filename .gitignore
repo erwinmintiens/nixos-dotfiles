@@ -1,2 +1,3 @@
 __pycache__/
 *.backup
+hardware-configuration.nix
