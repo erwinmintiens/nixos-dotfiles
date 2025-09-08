@@ -44,7 +44,6 @@ in
     rofi
     signal-desktop
     rustdesk
-    teams
     bruno
     zed-editor
     alacritty
@@ -64,6 +63,7 @@ in
     tldr
     firefox
     warp-terminal
+    teams-for-linux
 
     # archives
     zip
